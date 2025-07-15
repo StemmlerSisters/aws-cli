@@ -13,7 +13,8 @@
 import functools
 import importlib.metadata
 import json
-from typing import Dict, Iterator, List, Tuple
+from typing import Dict, List, Tuple
+from collections.abc import Iterator
 
 import pytest
 from packaging.requirements import Requirement

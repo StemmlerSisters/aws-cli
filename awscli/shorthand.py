@@ -93,7 +93,8 @@ class ShorthandParseSyntaxError(ShorthandParseError):
     def _construct_msg(self):
         return (
             f"Expected: '{self.expected}', received: '{self.actual}' "
-            f"for input:\n" "{self._error_location()}"
+            f"for input:\n"
+            "{self._error_location()}"
         )
 
 
@@ -271,7 +272,11 @@ class ShorthandParser:
         if result is not None:
             consumed = self._consume_matched_regex(result)
             processed = consumed.replace('\\,', ',').rstrip()
-            return self._resolve_paramfiles(processed) if self._should_resolve_paramfiles else processed
+            return (
+                self._resolve_paramfiles(processed)
+                if self._should_resolve_paramfiles
+                else processed
+            )
         return ''
 
     def _explicit_list(self):
@@ -331,7 +336,11 @@ class ShorthandParser:
         # val-escaped-single  = %x20-26 / %x28-7F / escaped-escape /
         #                       (escape single-quote)
         processed = self._consume_quoted(self._SINGLE_QUOTED, escaped_char="'")
-        return self._resolve_paramfiles(processed) if self._should_resolve_paramfiles else processed
+        return (
+            self._resolve_paramfiles(processed)
+            if self._should_resolve_paramfiles
+            else processed
+        )
 
     def _consume_quoted(self, regex, escaped_char=None):
         value = self._must_consume_regex(regex)[1:-1]
@@ -342,7 +351,11 @@ class ShorthandParser:
 
     def _double_quoted_value(self):
         processed = self._consume_quoted(self._DOUBLE_QUOTED, escaped_char='"')
-        return self._resolve_paramfiles(processed) if self._should_resolve_paramfiles else processed
+        return (
+            self._resolve_paramfiles(processed)
+            if self._should_resolve_paramfiles
+            else processed
+        )
 
     def _second_value(self):
         if self._current() == "'":
@@ -352,7 +365,11 @@ class ShorthandParser:
         else:
             consumed = self._must_consume_regex(self._SECOND_VALUE)
             processed = consumed.replace('\\,', ',').rstrip()
-            return self._resolve_paramfiles(processed) if self._should_resolve_paramfiles else processed
+            return (
+                self._resolve_paramfiles(processed)
+                if self._should_resolve_paramfiles
+                else processed
+            )
 
     def _resolve_paramfiles(self, val):
         if (paramfile := get_paramfile(val, LOCAL_PREFIX_MAP)) is not None:
@@ -413,9 +430,7 @@ class ModelVisitor:
         self._visit({}, model, '', params)
 
     def _visit(self, parent, shape, name, value):
-        method = getattr(
-            self, f'_visit_{shape.type_name}', self._visit_scalar
-        )
+        method = getattr(self, f'_visit_{shape.type_name}', self._visit_scalar)
         method(parent, shape, name, value)
 
     def _visit_structure(self, parent, shape, name, value):
@@ -471,9 +486,7 @@ class BackCompatVisitor(ModelVisitor):
             if value is not None:
                 parent[name] = [value]
         else:
-            return super()._visit_list(
-                parent, shape, name, value
-            )
+            return super()._visit_list(parent, shape, name, value)
 
     def _visit_scalar(self, parent, shape, name, value):
         if value is None:

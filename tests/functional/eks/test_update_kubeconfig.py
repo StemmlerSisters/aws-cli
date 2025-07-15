@@ -12,28 +12,26 @@
 # language governing permissions and limitations under the License.
 
 import os
-import sys
-import glob
-import yaml
-import logging
-import botocore
-import tempfile
-import shutil
 import re
-from argparse import Namespace
+import shutil
+import tempfile
 
 from botocore.session import get_session
 
-from awscli.testutils import mock, unittest, capture_output
-from awscli.customizations.eks.update_kubeconfig import UpdateKubeconfigCommand
 from awscli.customizations.eks.exceptions import EKSClusterError
-from awscli.customizations.eks.kubeconfig import (Kubeconfig,
-                                                  KubeconfigCorruptedError,
-                                                  KubeconfigInaccessableError)
-from tests.functional.eks.test_util import (describe_cluster_response,
-                                            describe_cluster_creating_response,
-                                            get_testdata,
-                                            assume_role_response)
+from awscli.customizations.eks.kubeconfig import (
+    KubeconfigCorruptedError,
+    KubeconfigInaccessableError,
+)
+from awscli.customizations.eks.update_kubeconfig import UpdateKubeconfigCommand
+from awscli.testutils import capture_output, mock, unittest
+from tests.functional.eks.test_util import (
+    assume_role_response,
+    describe_cluster_creating_response,
+    describe_cluster_response,
+    get_testdata,
+)
+
 
 def sanitize_output(output):
     """
@@ -50,9 +48,11 @@ def sanitize_output(output):
             to_return += '\n'
     return to_return.strip()
 
+
 def build_environment(entries):
-    """ Build an environment variable from a list of strings. """
+    """Build an environment variable from a list of strings."""
     return os.path.pathsep.join(entries)
+
 
 class TestUpdateKubeconfig(unittest.TestCase):
     def setUp(self):
@@ -75,7 +75,7 @@ class TestUpdateKubeconfig(unittest.TestCase):
         self.mock_create_client.side_effect = lambda service_name, **kwargs: (
             self.sts_client_mock if service_name == "sts" else self.client
         )
-        
+
         self.command = UpdateKubeconfigCommand(self.session)
         self.maxDiff = None
 
@@ -89,9 +89,8 @@ class TestUpdateKubeconfig(unittest.TestCase):
         """
         with open(get_testdata(file)) as f:
             self.assertMultiLineEqual(
-                    sanitize_output(captured.stdout.getvalue()),
-                    f.read().strip()
-                )
+                sanitize_output(captured.stdout.getvalue()), f.read().strip()
+            )
 
     def _get_temp_config(self, config):
         """
@@ -112,10 +111,8 @@ class TestUpdateKubeconfig(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self._temp_directory)
         if files is not None:
             for file in files:
-                shutil.copy2(get_testdata(file),
-                            self._get_temp_config(file))
+                shutil.copy2(get_testdata(file), self._get_temp_config(file))
         return self._temp_directory
-
 
     def build_temp_environment_variable(self, configs):
         """
@@ -126,8 +123,9 @@ class TestUpdateKubeconfig(unittest.TestCase):
         to put in the environment variable
         :type configs: list
         """
-        return build_environment([self._get_temp_config(config)
-                                  for config in configs])
+        return build_environment(
+            [self._get_temp_config(config) for config in configs]
+        )
 
     def assert_config_state(self, config_name, correct_output_name):
         """
@@ -145,13 +143,16 @@ class TestUpdateKubeconfig(unittest.TestCase):
         """
         with open(self._get_temp_config(config_name)) as file1:
             with open(get_testdata(correct_output_name)) as file2:
-                self.assertMultiLineEqual(file1.read().strip(),
-                                          file2.read().strip())
+                self.assertMultiLineEqual(
+                    file1.read().strip(), file2.read().strip()
+                )
 
-
-    def assert_cmd_dry(self, passed_config,
-                       env_variable_configs,
-                       default_config=os.path.join(".kube", "config")):
+    def assert_cmd_dry(
+        self,
+        passed_config,
+        env_variable_configs,
+        default_config=os.path.join(".kube", "config"),
+    ):
         """
         Run update-kubeconfig using dry-run,
         assert_cmd_dry runs directly referencing the testdata directory,
@@ -183,20 +184,26 @@ class TestUpdateKubeconfig(unittest.TestCase):
         with capture_output() as captured:
             with mock.patch.dict(os.environ, {'KUBECONFIG': env_variable}):
                 with mock.patch(
-                        "awscli.customizations.eks.update_kubeconfig.DEFAULT_PATH",
-                        get_testdata(default_config)):
+                    "awscli.customizations.eks.update_kubeconfig.DEFAULT_PATH",
+                    get_testdata(default_config),
+                ):
                     self.command(args, None)
 
         self.mock_create_client.assert_called_once_with('eks')
-        self.client \
-            .describe_cluster.assert_called_once_with(name='ExampleCluster')
+        self.client.describe_cluster.assert_called_once_with(
+            name='ExampleCluster'
+        )
 
         return captured
 
-    def assert_cmd(self, configs, passed_config,
-                   env_variable_configs,
-                   default_config=os.path.join(".kube", "config"),
-                   verbose=False):
+    def assert_cmd(
+        self,
+        configs,
+        passed_config,
+        env_variable_configs,
+        default_config=os.path.join(".kube", "config"),
+        verbose=False,
+    ):
         """
         Run update-kubeconfig in a temp directory,
         This directory will have copies of all testdata files whose names
@@ -230,12 +237,14 @@ class TestUpdateKubeconfig(unittest.TestCase):
         with mock.patch.dict(os.environ, {'KUBECONFIG': env_variable}):
             with mock.patch(
                 "awscli.customizations.eks.update_kubeconfig.DEFAULT_PATH",
-                            self._get_temp_config(default_config)):
+                self._get_temp_config(default_config),
+            ):
                 self.command(args, None)
 
         self.mock_create_client.assert_called_once_with('eks')
-        self.client\
-            .describe_cluster.assert_called_once_with(name='ExampleCluster')
+        self.client.describe_cluster.assert_called_once_with(
+            name='ExampleCluster'
+        )
 
     def test_dry_run_new(self):
         passed = "new_config"
@@ -274,14 +283,18 @@ class TestUpdateKubeconfig(unittest.TestCase):
         self.assert_config_state("new_config", "output_single")
 
     def test_use_environment(self):
-        configs = ['invalid_string_clusters',
-                   'valid_empty_existing',
-                   'valid_existing']
+        configs = [
+            'invalid_string_clusters',
+            'valid_empty_existing',
+            'valid_existing',
+        ]
         passed = None
-        environment = ['does_not_exist',
-                       'invalid_string_clusters',
-                       'valid_empty_existing',
-                       'valid_existing']
+        environment = [
+            'does_not_exist',
+            'invalid_string_clusters',
+            'valid_empty_existing',
+            'valid_existing',
+        ]
 
         self.assert_cmd(configs, passed, environment)
         self.assert_config_state("does_not_exist", "output_single")
@@ -296,39 +309,48 @@ class TestUpdateKubeconfig(unittest.TestCase):
         self.assert_config_state("valid_existing", "output_combined")
 
     def test_all_corrupted(self):
-        configs = ["invalid_string_cluster_entry",
-                   "invalid_string_contexts",
-                   "invalid_text"]
+        configs = [
+            "invalid_string_cluster_entry",
+            "invalid_string_contexts",
+            "invalid_text",
+        ]
         passed = None
-        environment = ["invalid_string_cluster_entry",
-                       "invalid_string_contexts",
-                       "invalid_text"]
+        environment = [
+            "invalid_string_cluster_entry",
+            "invalid_string_contexts",
+            "invalid_text",
+        ]
 
         with self.assertRaises(KubeconfigCorruptedError):
             self.assert_cmd(configs, passed, environment)
 
     def test_all_but_one_corrupted(self):
-        configs = ["valid_existing",
-                   "invalid_string_cluster_entry",
-                   "invalid_string_contexts",
-                   "invalid_text"]
+        configs = [
+            "valid_existing",
+            "invalid_string_cluster_entry",
+            "invalid_string_contexts",
+            "invalid_text",
+        ]
         passed = None
-        environment = ["valid_existing",
-                       "invalid_string_cluster_entry",
-                       "invalid_string_contexts",
-                       "invalid_text"]
+        environment = [
+            "valid_existing",
+            "invalid_string_cluster_entry",
+            "invalid_string_contexts",
+            "invalid_text",
+        ]
 
         self.assert_cmd(configs, passed, environment)
         self.assert_config_state("valid_existing", 'output_combined')
 
     def test_corrupted_and_missing(self):
-        configs = ["invalid_string_clusters",
-                   "invalid_string_users"]
+        configs = ["invalid_string_clusters", "invalid_string_users"]
         passed = None
-        environment = ["invalid_string_clusters",
-                       "does_not_exist",
-                       "does_not_exist2",
-                       "invalid_string_users"]
+        environment = [
+            "invalid_string_clusters",
+            "does_not_exist",
+            "does_not_exist2",
+            "invalid_string_users",
+        ]
 
         with self.assertRaises(KubeconfigCorruptedError):
             self.assert_cmd(configs, passed, environment)
@@ -345,39 +367,42 @@ class TestUpdateKubeconfig(unittest.TestCase):
         configs = ["valid_existing"]
 
         self.initialize_tempfiles(configs)
-        env_variable = build_environment([
-            "",
-            self._get_temp_config("valid_existing")
-        ])
+        env_variable = build_environment(
+            ["", self._get_temp_config("valid_existing")]
+        )
         args = ["--name", "ExampleCluster"]
 
         with mock.patch.dict(os.environ, {'KUBECONFIG': env_variable}):
             with mock.patch(
                 "awscli.customizations.eks.update_kubeconfig.DEFAULT_PATH",
-                            self._get_temp_config("default_temp")):
+                self._get_temp_config("default_temp"),
+            ):
                 self.command(args, None)
 
         self.mock_create_client.assert_called_once_with('eks')
-        self.client\
-            .describe_cluster.assert_called_once_with(name='ExampleCluster')
+        self.client.describe_cluster.assert_called_once_with(
+            name='ExampleCluster'
+        )
         self.assert_config_state("valid_existing", "output_combined")
 
     def test_environmemt_all_empty(self):
         configs = ["valid_existing"]
 
         self.initialize_tempfiles(configs)
-        env_variable = build_environment(["", ""," ", "\t",""])
+        env_variable = build_environment(["", "", " ", "\t", ""])
         args = ["--name", "ExampleCluster"]
 
         with mock.patch.dict(os.environ, {'KUBECONFIG': env_variable}):
             with mock.patch(
                 "awscli.customizations.eks.update_kubeconfig.DEFAULT_PATH",
-                            self._get_temp_config("default_temp")):
+                self._get_temp_config("default_temp"),
+            ):
                 self.command(args, None)
 
         self.mock_create_client.assert_called_once_with('eks')
-        self.client\
-            .describe_cluster.assert_called_once_with(name='ExampleCluster')
+        self.client.describe_cluster.assert_called_once_with(
+            name='ExampleCluster'
+        )
         self.assert_config_state("default_temp", "output_single")
 
     def test_default_path_directory(self):
@@ -401,9 +426,7 @@ class TestUpdateKubeconfig(unittest.TestCase):
     def test_update_existing_environment(self):
         configs = ["valid_old_data"]
         passed = None
-        environment = ["valid_old_data",
-                       "output_combined",
-                       "output_single"]
+        environment = ["valid_old_data", "output_combined", "output_single"]
 
         self.assert_cmd(configs, passed, environment)
         self.assert_config_state("valid_old_data", "output_combined")
@@ -412,8 +435,9 @@ class TestUpdateKubeconfig(unittest.TestCase):
         configs = ["output_combined"]
         passed = "output_combined"
         environment = []
-        self.client.describe_cluster =\
-            mock.Mock(return_value=describe_cluster_creating_response())
+        self.client.describe_cluster = mock.Mock(
+            return_value=describe_cluster_creating_response()
+        )
         with self.assertRaises(EKSClusterError):
             self.assert_cmd(configs, passed, environment)
 
@@ -423,7 +447,9 @@ class TestUpdateKubeconfig(unittest.TestCase):
         environment = []
 
         self.assert_cmd(configs, passed, environment)
-        self.assert_config_state("valid_changed_ordering", "output_combined_changed_ordering")
+        self.assert_config_state(
+            "valid_changed_ordering", "output_combined_changed_ordering"
+        )
 
     def test_update_old_api_version(self):
         configs = ["valid_old_api_version"]
@@ -431,7 +457,9 @@ class TestUpdateKubeconfig(unittest.TestCase):
         environment = []
 
         self.assert_cmd(configs, passed, environment)
-        self.assert_config_state("valid_old_api_version", "valid_old_api_version_updated")
+        self.assert_config_state(
+            "valid_old_api_version", "valid_old_api_version_updated"
+        )
 
     def test_assume_role(self):
         """
@@ -442,8 +470,10 @@ class TestUpdateKubeconfig(unittest.TestCase):
 
         # Include the --assume-role-arn argument
         args = [
-            "--name", "ExampleCluster",
-            "--assume-role-arn", "arn:aws:iam::123456789012:role/test-role"
+            "--name",
+            "ExampleCluster",
+            "--assume-role-arn",
+            "arn:aws:iam::123456789012:role/test-role",
         ]
 
         # Mock environment variables and paths
@@ -451,13 +481,16 @@ class TestUpdateKubeconfig(unittest.TestCase):
         default_path = self._get_temp_config("default_temp")
 
         with mock.patch.dict(os.environ, {'KUBECONFIG': kubeconfig_path}):
-            with mock.patch("awscli.customizations.eks.update_kubeconfig.DEFAULT_PATH", default_path):
+            with mock.patch(
+                "awscli.customizations.eks.update_kubeconfig.DEFAULT_PATH",
+                default_path,
+            ):
                 self.command(args, None)
 
         # Verify that assume_role was called with the correct parameters
         self.sts_client_mock.assume_role.assert_called_once_with(
             RoleArn="arn:aws:iam::123456789012:role/test-role",
-            RoleSessionName="EKSDescribeClusterSession"
+            RoleSessionName="EKSDescribeClusterSession",
         )
 
         # Verify that the EKS client was created with the assumed credentials
@@ -465,11 +498,13 @@ class TestUpdateKubeconfig(unittest.TestCase):
             "eks",
             aws_access_key_id="test-access-key",
             aws_secret_access_key="test-secret-key",
-            aws_session_token="test-session-token"
+            aws_session_token="test-session-token",
         )
 
         # Verify that the cluster was described
-        self.client.describe_cluster.assert_called_once_with(name="ExampleCluster")
+        self.client.describe_cluster.assert_called_once_with(
+            name="ExampleCluster"
+        )
 
         # Assert the configuration state
         self.assert_config_state("valid_existing", "output_combined")
@@ -482,9 +517,13 @@ class TestUpdateKubeconfig(unittest.TestCase):
         passed = "valid_existing"
         environment = []
 
-        self.client.describe_cluster = mock.Mock(return_value=describe_cluster_response())
+        self.client.describe_cluster = mock.Mock(
+            return_value=describe_cluster_response()
+        )
         self.assert_cmd(configs, passed, environment)
 
         # Verify that assume_role was not called
         self.mock_create_client.assert_called_once_with("eks")
-        self.client.describe_cluster.assert_called_once_with(name="ExampleCluster")
+        self.client.describe_cluster.assert_called_once_with(
+            name="ExampleCluster"
+        )

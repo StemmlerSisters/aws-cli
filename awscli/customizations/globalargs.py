@@ -11,25 +11,35 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 import sys
-import os
-from botocore.client import Config
-from botocore import UNSIGNED
-from botocore.endpoint import DEFAULT_TIMEOUT
+
 import jmespath
+from botocore import UNSIGNED
+from botocore.client import Config
+from botocore.endpoint import DEFAULT_TIMEOUT
 
 from awscli.compat import urlparse
 
+
 def register_parse_global_args(cli):
-    cli.register('top-level-args-parsed', resolve_types,
-                 unique_id='resolve-types')
-    cli.register('top-level-args-parsed', no_sign_request,
-                 unique_id='no-sign')
-    cli.register('top-level-args-parsed', resolve_verify_ssl,
-                 unique_id='resolve-verify-ssl')
-    cli.register('top-level-args-parsed', resolve_cli_read_timeout,
-                 unique_id='resolve-cli-read-timeout')
-    cli.register('top-level-args-parsed', resolve_cli_connect_timeout,
-                 unique_id='resolve-cli-connect-timeout')
+    cli.register(
+        'top-level-args-parsed', resolve_types, unique_id='resolve-types'
+    )
+    cli.register('top-level-args-parsed', no_sign_request, unique_id='no-sign')
+    cli.register(
+        'top-level-args-parsed',
+        resolve_verify_ssl,
+        unique_id='resolve-verify-ssl',
+    )
+    cli.register(
+        'top-level-args-parsed',
+        resolve_cli_read_timeout,
+        unique_id='resolve-cli-read-timeout',
+    )
+    cli.register(
+        'top-level-args-parsed',
+        resolve_cli_connect_timeout,
+        unique_id='resolve-cli-connect-timeout',
+    )
 
 
 def resolve_types(parsed_args, **kwargs):
@@ -58,9 +68,11 @@ def _resolve_endpoint_url(value):
     # Our http library requires you specify an endpoint url
     # that contains a scheme, so we'll verify that up front.
     if not parsed.scheme:
-        raise ValueError('Bad value for --endpoint-url "%s": scheme is '
-                         'missing.  Must be of the form '
-                         'http://<hostname>/ or https://<hostname>/' % value)
+        raise ValueError(
+            'Bad value for --endpoint-url "%s": scheme is '
+            'missing.  Must be of the form '
+            'http://<hostname>/ or https://<hostname>/' % value
+        )
     return value
 
 
@@ -79,12 +91,14 @@ def resolve_verify_ssl(parsed_args, session, **kwargs):
             verify = getattr(parsed_args, 'ca_bundle', None)
         setattr(parsed_args, arg_name, verify)
 
+
 def no_sign_request(parsed_args, session, **kwargs):
     if not parsed_args.sign_request:
         # Disable request signing by setting the signature version to UNSIGNED
         # in the default client configuration. This ensures all new clients
         # will be created with signing disabled.
         _update_default_client_config(session, 'signature_version', UNSIGNED)
+
 
 def resolve_cli_connect_timeout(parsed_args, session, **kwargs):
     arg_name = 'connect_timeout'
@@ -94,6 +108,7 @@ def resolve_cli_connect_timeout(parsed_args, session, **kwargs):
 def resolve_cli_read_timeout(parsed_args, session, **kwargs):
     arg_name = 'read_timeout'
     _resolve_timeout(session, parsed_args, arg_name)
+
 
 def _resolve_timeout(session, parsed_args, arg_name):
     arg_value = getattr(parsed_args, arg_name, None)
