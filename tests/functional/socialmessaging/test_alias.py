@@ -16,8 +16,10 @@ from awscli.testutils import BaseAWSCommandParamsTest
 class TestAlias(BaseAWSCommandParamsTest):
     def test_alias(self):
         # This command was aliased, both should work
-        command_template = ('socialmessaging %s --origination-phone-number-id foo '
-                            '--media-id bar')
+        command_template = (
+            'socialmessaging %s --origination-phone-number-id foo '
+            '--media-id bar'
+        )
         old_command = command_template % 'delete-whatsapp-media-message'
         new_command = command_template % 'delete-whatsapp-message-media'
         self.run_cmd(old_command, expected_rc=0)

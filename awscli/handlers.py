@@ -105,7 +105,10 @@ from awscli.customizations.removals import register_removals
 from awscli.customizations.route53 import register_create_hosted_zone_doc_fix
 from awscli.customizations.s3.s3 import s3_plugin_initialize
 from awscli.customizations.s3errormsg import register_s3_error_msg
-from awscli.customizations.s3events import register_event_stream_arg, register_document_expires_string
+from awscli.customizations.s3events import (
+    register_document_expires_string,
+    register_event_stream_arg,
+)
 from awscli.customizations.sagemaker import (
     register_alias_sagemaker_runtime_command,
 )
@@ -116,7 +119,9 @@ from awscli.customizations.servicecatalog import (
 from awscli.customizations.sessendemail import register_ses_send_email
 from awscli.customizations.sessionmanager import register_ssm_session
 from awscli.customizations.sms_voice import register_sms_voice_hide
-from awscli.customizations.socialmessaging import register_alias_socialmessaging_command
+from awscli.customizations.socialmessaging import (
+    register_alias_socialmessaging_command,
+)
 from awscli.customizations.streamingoutputarg import add_streaming_output_arg
 from awscli.customizations.toplevelbool import register_bool_params
 from awscli.customizations.translate import (

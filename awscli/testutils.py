@@ -32,7 +32,6 @@ import sys
 import tempfile
 import time
 import unittest
-import uuid
 from pprint import pformat
 from subprocess import PIPE, Popen
 from unittest import mock

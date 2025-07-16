@@ -15,8 +15,7 @@ from awscli.customizations.utils import make_hidden_command_alias
 
 def register_alias_socialmessaging_command(event_emitter):
     event_emitter.register(
-        'building-command-table.socialmessaging',
-        alias_socialmessaging_command
+        'building-command-table.socialmessaging', alias_socialmessaging_command
     )
 
 
